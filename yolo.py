@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from main import detected_frame
 
 class YOLO:
     def __init__(self, weights, config, classes_file):
@@ -9,9 +10,10 @@ class YOLO:
             self.classes = [line.strip() for line in f.readlines()]
         layer_names = self.net.getLayerNames()
         self.output_layers = [layer_names[i - 1] for i in self.net.getUnconnectedOutLayers()]
-        self.classes_to_detect = ["bicycle", "car", "motorbike", "bus", "train", "traffic light", "stop sign"]
+        self.classes_to_detect = ["car"]
         self.colors = self._generate_colors()
         self.detections_log = []
+        self.counted_ids = set()  # Para llevar un registro de los IDs de autos ya contados
 
     def _generate_colors(self):
         np.random.seed(42)  # Semilla para colores consistentes
@@ -35,7 +37,7 @@ class YOLO:
                 scores = detection[5:]
                 class_id = np.argmax(scores)
                 confidence = scores[class_id]
-                if confidence > 0.25 and self.classes[class_id] in self.classes_to_detect:
+                if confidence > 0.2 and self.classes[class_id] in self.classes_to_detect:
                     # Objeto detectado
                     center_x = int(detection[0] * width)
                     center_y = int(detection[1] * height)
@@ -50,12 +52,11 @@ class YOLO:
 
         # Supresión no máxima para eliminar cajas superpuestas
         indexes = cv2.dnn.NMSBoxes(boxes, confidences, 0.2, 0.4)
+  
+        
 
-        # Actualizar el registro de detecciones
-        self.update_log(class_ids, indexes)
 
         return boxes, confidences, class_ids, indexes
-
 
     def draw_labels(self, img, boxes, confidences, class_ids, indexes):
         font = cv2.FONT_HERSHEY_PLAIN
@@ -66,6 +67,8 @@ class YOLO:
                 color = self.colors[label]
                 cv2.rectangle(img, (x, y), (x + w, y + h), color, 2)
                 cv2.putText(img, label, (x, y + 30), font, 2, color, 2)
+        
+        # Mostrar la cantidad total de autos detectados
+        cv2.putText(img, f'Car Count: {len(boxes)}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        
         return img
-
-
